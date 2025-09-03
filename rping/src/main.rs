@@ -1,19 +1,13 @@
+#[macro_use] extern crate rocket;
 use std::env;
 
-#[macro_use] extern crate rocket;
+use launcher::launch_based_on_params;
+
 pub mod controllers;
+pub mod launcher;
 
 #[rocket::main]
-async fn main() -> Result<(), rocket::Error> {
-    let args: Vec<String> = env::args().collect();
-
-    if args.iter().count() > 1 {
-        println!("{}", args[1]);
-    }
-
-    let _rocket = rocket::build()
-        .mount("/", routes![controllers::index])
-        .launch()
-        .await?;
-    Ok(())
+async fn main() -> Result<(), String> {
+    let mut args: Vec<String> = env::args().collect();
+    launch_based_on_params(args.split_off(1)).await
 }
