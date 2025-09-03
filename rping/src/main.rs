@@ -5,6 +5,7 @@ use launcher::launch_based_on_params;
 
 pub mod controllers;
 pub mod launcher;
+pub mod types;
 
 #[rocket::main]
 async fn main() -> Result<(), String> {
