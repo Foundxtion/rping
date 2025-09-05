@@ -33,7 +33,7 @@ impl<'r> FromRequest<'r> for ClientGuard {
 }
 
 #[post("/", format = "application/json", data = "<info>")]
-pub async fn index(info: Json<DnsInfoRequest>, client_info: ClientGuard, map: &State<HostMap>) -> Json<DnsResponse> {
+pub async fn post_address(info: Json<DnsInfoRequest>, client_info: ClientGuard, map: &State<HostMap>) -> Json<DnsResponse> {
     let hostname = info.hostname.clone();
     let ip = client_info.ip;
 

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{controllers, types::HostMap};
+use crate::{routes, types::HostMap};
 
 struct Config {
     action: String,
@@ -18,7 +18,8 @@ pub async fn launch_based_on_params(params: Vec<String>) -> Result<(), String> {
     match config.action.as_str() {
         "serve" => {
             let _rocket = rocket::build()
-                .mount("/", routes![controllers::index])
+                .mount("/add", routes![routes::post_address])
+                .mount("/get", routes![routes::get_list])
                 .manage(HostMap::new(HashMap::new()))
                 .launch()
                 .await.or_else(|_e| Err("Could not start Rocket server".to_string()))?;

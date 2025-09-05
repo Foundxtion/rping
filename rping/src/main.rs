@@ -3,7 +3,7 @@ use std::env;
 
 use launcher::launch_based_on_params;
 
-pub mod controllers;
+pub mod routes;
 pub mod launcher;
 pub mod types;
 
