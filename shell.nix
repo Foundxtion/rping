@@ -5,8 +5,11 @@
       cargo
       rustc
       rustup
+	  rustfmt
       trunk
       cargo-binutils
       lld
+	  openssl
+	  pkg-config
   ];
 })
