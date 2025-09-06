@@ -25,8 +25,14 @@ pub async fn launch_based_on_params(params: Vec<String>) -> Result<(), &'static 
                 .or_else(|_e| Err("Could not start Rocket server"))?;
             Ok(())
         }
-        "list" => Ok(()),
-        "send" => Ok(()),
+        "list" => {
+            librping::list(config.url).await;
+            Ok(())
+        },
+        "send" => {
+            librping::send(config.url).await;
+            Ok(())
+        },
         _ => Err("Unknown command"),
     }
 }
@@ -41,7 +47,6 @@ fn parse_params(params: Vec<String>) -> Result<Config, &'static str> {
     let mut i = 0;
     let len = params.len();
     while i < len {
-        println!("{}", i);
         let mut param = params[i].to_owned();
 
         if param.starts_with("--") && i + 1 < len {
