@@ -11,5 +11,11 @@
       lld
 	  openssl
 	  pkg-config
+	  krb5Full
+	  llvmPackages.libclang.lib
   ];
+  shellHook = with pkgs; ''
+	export LIBCLANG_PATH="${llvmPackages.libclang.lib}/lib"
+  '';
+
 })
