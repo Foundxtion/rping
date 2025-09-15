@@ -1,14 +1,7 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+mod krb_fairing;
+mod krb_server_creds;
+mod krb_token;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use krb_fairing::*;
+pub use krb_server_creds::*;
+pub use krb_token::*;
