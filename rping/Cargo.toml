@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 rocket = { version = "0.5.1", features = ["json"] } 
 librping = { path = "../librping" }
+rocket-krb5 = { path = "../rocket-krb5" }
