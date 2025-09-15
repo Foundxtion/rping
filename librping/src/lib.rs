@@ -1,6 +1,6 @@
 mod client;
 mod display;
-mod types;
 mod tools;
+mod types;
 
 pub use tools::*;

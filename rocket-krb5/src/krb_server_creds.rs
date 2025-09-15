@@ -1,7 +1,7 @@
 use libgssapi::{
     credential::{Cred, CredUsage},
     name::Name,
-    oid::{OidSet, GSS_MECH_KRB5, GSS_NT_KRB5_PRINCIPAL},
+    oid::{GSS_MECH_KRB5, GSS_NT_KRB5_PRINCIPAL, OidSet},
 };
 
 pub struct KrbServerCreds {
@@ -21,7 +21,7 @@ impl KrbServerCreds {
             Err(e) => {
                 println!("{}", e);
                 None
-            },
+            }
         }?;
 
         Some(KrbServerCreds { principal, creds })

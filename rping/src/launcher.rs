@@ -21,7 +21,7 @@ pub async fn launch_based_on_params(params: Vec<String>) -> Result<(), &'static 
         "serve" => {
             let auth_fairing = KrbFairing {};
             let creds: KrbServerCreds = KrbServerCreds::new(config.principal)
-                    .ok_or_else(|| "Cannot instantiate kerberos creds")?;
+                .ok_or_else(|| "Cannot instantiate kerberos creds")?;
             println!("{}", creds.principal.clone());
 
             let _rocket = rocket::build()
