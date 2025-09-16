@@ -1,6 +1,7 @@
 use base64::Engine;
 use base64::engine::general_purpose;
 use libgssapi::context::{SecurityContext, ServerCtx};
+use libgssapi::util::Buf;
 use rocket::Request;
 use rocket::State;
 use rocket::futures::lock::Mutex;
@@ -11,6 +12,16 @@ use crate::KrbServerCreds;
 
 pub struct KrbToken {
     pub principal: String,
+}
+
+#[derive(Debug)]
+pub struct IncompleteSpnego {
+    pub token: String,
+}
+
+struct AuthStatus {
+    krb: Option<KrbToken>,
+    spnego: Option<IncompleteSpnego>,
 }
 
 impl KrbToken {
@@ -41,48 +52,79 @@ impl<'r> FromRequest<'r> for KrbToken {
             }
         };
         let locked_creds = server_creds.lock().await;
-
         match header {
             None => Outcome::Error((
                 Status::Unauthorized,
                 "SPNEGO Authentication required.".to_string(),
             )),
             Some(encoded_token) => get_decoded_token(&locked_creds, encoded_token).map_or(
-                Outcome::Error((Status::Unauthorized, "Principal not allowed".to_string())),
-                |tok| Outcome::Success(tok),
+                Outcome::Error((Status::Forbidden, "Principal not allowed".to_string())),
+                |auth_status| finalize_response(auth_status, request),
             ),
         }
     }
 }
 
-fn get_decoded_token(creds: &KrbServerCreds, header_value: &str) -> Option<KrbToken> {
+fn finalize_response<'r>(
+    auth_status: AuthStatus,
+    req: &'r Request<'_>,
+) -> Outcome<KrbToken, String> {
+    if let Some(spnego) = auth_status.spnego {
+        req.local_cache(|| spnego);
+    }
+
+    match auth_status.krb {
+        Some(token) => Outcome::Success(token),
+        None => Outcome::Error((
+            Status::Unauthorized,
+            "Continuing authentication because of incomplete SPNEGO".to_string(),
+        )),
+    }
+}
+
+fn get_decoded_token(creds: &KrbServerCreds, header_value: &str) -> Option<AuthStatus> {
     let c = creds.creds.clone();
-    println!("{:?}", c);
     let mut context = ServerCtx::new(Some(c));
-    println!("{:?}", context);
-    let mut validated_context = header_value
+
+    let token = header_value
         .strip_prefix("Negotiate ")
-        .and_then(|b64| general_purpose::STANDARD.decode(b64.as_bytes()).ok())
-        .and_then(move |token| {
-            // if we have another token to process, then it should fail, SPNEGO should not require
-            // to send another token to the client
-            match context.step(&*token) {
-                Ok(opt) => match opt {
-                    Some(_) => {
-                        println!("There is another token to send wtf");
-                        None
-                    }
-                    None => Some(context),
-                },
-                Err(e) => {
-                    println!("There is an error while stepping in server context: {}", e);
-                    None
-                }
-            }
-        })?;
+        .and_then(|b64| general_purpose::STANDARD.decode(b64).ok())?;
 
-    let principal_cname = validated_context.target_name().ok()?;
-    let principal = String::from_utf8(principal_cname.display_name().ok()?.to_vec()).ok()?;
+    match context.step(&*token) {
+        Ok(opt) => wrap_up_token(opt, context),
+        Err(e) => {
+            println!("There is an error while stepping in server context: {}", e);
+            None
+        }
+    }
+}
 
-    Some(KrbToken::new(principal))
+fn wrap_up_token(maybe_token: Option<Buf>, context: ServerCtx) -> Option<AuthStatus> {
+    let principal = get_source_principal(context);
+    match maybe_token {
+        None => Some(AuthStatus {
+            krb: Some(KrbToken::new(principal.unwrap())),
+            spnego: None,
+        }),
+        Some(t) => {
+            let encoded_token = general_purpose::STANDARD.encode(&*t).as_str().to_string();
+
+            let krb_token = principal.map_or(None, |p| Some(KrbToken::new(p)));
+
+            Some(AuthStatus {
+                krb: krb_token,
+                spnego: Some(IncompleteSpnego {
+                    token: encoded_token,
+                }),
+            })
+        }
+    }
+}
+
+fn get_source_principal(mut context: ServerCtx) -> Option<String> {
+    if !context.is_complete() {
+        return None;
+    }
+    let principal_cname = context.source_name().ok()?;
+    String::from_utf8(principal_cname.display_name().ok()?.to_vec()).ok()
 }

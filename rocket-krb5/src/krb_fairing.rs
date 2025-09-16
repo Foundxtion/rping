@@ -4,6 +4,8 @@ use rocket::{
     http::Status,
 };
 
+use crate::IncompleteSpnego;
+
 pub struct KrbFairing {}
 
 #[rocket::async_trait]
@@ -15,11 +17,24 @@ impl Fairing for KrbFairing {
         }
     }
 
-    async fn on_response<'r>(&self, _request: &'r Request<'_>, response: &mut Response<'r>) {
-        if response.status() != Status::Unauthorized {
+    async fn on_response<'r>(&self, request: &'r Request<'_>, response: &mut Response<'r>) {
+        let spnego = request.local_cache(|| IncompleteSpnego {
+            token: String::new(),
+        });
+
+        if response.status() == Status::Unauthorized {
+            response.set_raw_header(
+                "WWW-Authenticate",
+                "Negotiate ".to_string() + spnego.token.as_str(),
+            );
             return;
         }
 
-        response.set_raw_header("WWW-Authenticate", "Negotiate");
+        if !spnego.token.is_empty() {
+            response.set_raw_header(
+                "WWW-Authenticate",
+                "Negotiate ".to_string() + spnego.token.as_str(),
+            );
+        }
     }
 }
