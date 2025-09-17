@@ -9,6 +9,21 @@ use crate::{
     types::Dns,
 };
 
+/// Sends a DNS record to the server using Kerberos authentication.
+///
+/// ### Parameters
+/// - `hostname`: The DNS hostname to send.
+/// - `url`: The service URL as a string.
+/// - `realm`: The Kerberos realm as a string.
+/// - `maybe_retry`: Optional number of retries.
+///
+/// ### Returns
+/// - `Result<(), String>`: Ok if successful, Err with error message otherwise.
+///
+/// ### Example
+/// ```rust
+/// send_dns("host1".to_string(), "https://example.com/api".to_string(), "EXAMPLE.COM".to_string(), None).await.unwrap();
+/// ```
 pub async fn send_dns(
     hostname: String,
     url: String,
@@ -65,6 +80,20 @@ pub async fn send_dns(
     }
 }
 
+/// Receives a list of DNS records from the server using Kerberos authentication.
+///
+/// ### Parameters
+/// - `url`: The service URL as a string.
+/// - `realm`: The Kerberos realm as a string.
+/// - `maybe_retry`: Optional number of retries.
+///
+/// ### Returns
+/// - `Result<Vec<Dns>, String>`: Ok with vector of DNS records, Err with error message otherwise.
+///
+/// ### Example
+/// ```rust
+/// let dns_list = receive_list("https://example.com/api".to_string(), "EXAMPLE.COM".to_string(), None).await.unwrap();
+/// ```
 pub async fn receive_list(
     url: String,
     realm: String,
@@ -117,6 +146,13 @@ pub async fn receive_list(
     Ok(map.into_iter().map(|i| Dns::new(i.0, i.1)).collect())
 }
 
+/// Extracts the WWW-Authenticate header from a response.
+///
+/// ### Parameters
+/// - `answer`: Reference to a `Response` object.
+///
+/// ### Returns
+/// - `Result<String, String>`: Ok with header value, Err with error message otherwise.
 fn get_header(answer: &Response) -> Result<String, String> {
     let headers = {
         let h = answer.headers();
@@ -135,6 +171,13 @@ fn get_header(answer: &Response) -> Result<String, String> {
     Ok(header_value)
 }
 
+/// Asynchronously fetches the body text from a response.
+///
+/// ### Parameters
+/// - `answer`: The `Response` object.
+///
+/// ### Returns
+/// - `Result<String, String>`: Ok with body text, Err with error message otherwise.
 async fn get_body(answer: Response) -> Result<String, String> {
     answer
         .text()
@@ -142,6 +185,15 @@ async fn get_body(answer: Response) -> Result<String, String> {
         .map_err(|e| format!("Error fetching body: {}", e))
 }
 
+/// Asynchronously sends a GET request with Kerberos token.
+///
+/// ### Parameters
+/// - `client`: Reference to a `Client` object.
+/// - `url`: The service URL as a string.
+/// - `token`: The Kerberos token as a string.
+///
+/// ### Returns
+/// - `Result<Response, String>`: Ok with response, Err with error message otherwise.
 async fn send_get(client: &Client, url: String, token: String) -> Result<Response, String> {
     client
         .get(url.clone())
