@@ -6,6 +6,8 @@ use rocket::{
     serde::{Deserialize, Serialize, json::Json},
 };
 
+use rocket_krb5::KrbToken;
+
 use crate::types::HostMap;
 
 #[derive(Serialize, Deserialize)]
@@ -40,6 +42,7 @@ pub async fn post_address(
     info: Json<DnsInfoRequest>,
     client_info: ClientGuard,
     map: &State<HostMap>,
+    _token: KrbToken,
 ) -> Json<DnsResponse> {
     let hostname = info.hostname.clone();
     let ip = client_info.ip;
