@@ -3,13 +3,17 @@ use crate::{
     display::display_dns,
 };
 
-pub async fn list(url: String) {
-    let dns = receive_list(url).await;
-
-    display_dns(dns)
+pub async fn list(url: String, realm: String) {
+    match receive_list(url, realm, None).await {
+        Ok(dns) => display_dns(dns),
+        Err(e) => println!("{}", e),
+    }
 }
 
-pub async fn send(url: String) {
+pub async fn send(url: String, realm: String) {
     let hostname = hostname::get().unwrap();
-    send_dns(hostname.into_string().unwrap(), url).await;
+    send_dns(hostname.into_string().unwrap(), url, realm, None)
+        .await
+        .err()
+        .inspect(|e| println!("{}", e));
 }

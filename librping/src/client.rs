@@ -1,22 +1,152 @@
 use std::collections::HashMap;
 
-use crate::types::Dns;
+use reqwest::{Client, Response, StatusCode};
 
-pub async fn send_dns(hostname: String, url: String) {
+use crate::{
+    auth::{
+        create_context, derive_principal_from_url, generate_token, prepare_server_token_from_header,
+    },
+    types::Dns,
+};
+
+pub async fn send_dns(
+    hostname: String,
+    url: String,
+    realm: String,
+    maybe_retry: Option<usize>,
+) -> Result<(), String> {
+    let retry = maybe_retry.unwrap_or(5);
+    let service_principal = derive_principal_from_url(url.clone(), realm)
+        .ok_or("Could not parse principal from url.")?;
+    let mut context =
+        create_context(service_principal).ok_or("Could not create kerberos client context.")?;
+
     let client = reqwest::Client::new();
     let mut map = HashMap::new();
     map.insert("hostname", hostname);
 
-    let _ = client.post(url).json(&map).send().await;
+    let mut counter = 0;
+    let mut status: StatusCode = StatusCode::UNAUTHORIZED;
+    let mut server_tok: Option<Vec<u8>> = None;
+
+    loop {
+        let client_tok: Option<String> = generate_token(&mut context, server_tok);
+
+        if client_tok.is_none() || status.is_success() {
+            break;
+        }
+
+        let answer = client
+            .post(url.clone())
+            .header(
+                "Authorization",
+                "Negotiate ".to_string() + client_tok.unwrap().as_str(),
+            )
+            .json(&map)
+            .send()
+            .await
+            .map_err(|e| format!("Send error: {}", e))?;
+
+        counter += 1;
+        status = answer.status();
+
+        if status == StatusCode::NOT_FOUND {
+            return Err(format!("The url: '{}' is not a valid endpoint", url));
+        }
+
+        let header_value = get_header(&answer)?;
+        server_tok = prepare_server_token_from_header(header_value);
+    }
+
+    if counter >= retry {
+        Err(String::from("Retry limit reached, aborting..."))
+    } else {
+        Ok(())
+    }
 }
 
-pub async fn receive_list(url: String) -> Vec<Dns> {
-    let body = reqwest::get(url).await.unwrap().text().await.unwrap();
+pub async fn receive_list(
+    url: String,
+    realm: String,
+    maybe_retry: Option<usize>,
+) -> Result<Vec<Dns>, String> {
+    let retry = maybe_retry.unwrap_or(5);
+    let service_principal = derive_principal_from_url(url.clone(), realm)
+        .ok_or("Could not parse principal from url.")?;
+    let mut context =
+        create_context(service_principal).ok_or("Could not create kerberos client context.")?;
 
-    let map: HashMap<String, String> =
-        serde_json::from_str::<HashMap<String, String>>(body.as_str())
-            .ok()
-            .unwrap();
+    let client = reqwest::Client::new();
 
-    map.into_iter().map(|i| Dns::new(i.0, i.1)).collect()
+    let mut counter = 0;
+    let mut status: StatusCode = StatusCode::UNAUTHORIZED;
+    let mut body: String = String::new();
+    let mut server_tok: Option<Vec<u8>> = None;
+
+    loop {
+        let client_tok: Option<String> = generate_token(&mut context, server_tok);
+
+        if client_tok.is_none() || status.is_success() {
+            break;
+        }
+
+        let tok = client_tok.unwrap();
+
+        let answer = send_get(&client, url.clone(), tok).await?;
+
+        counter += 1;
+        status = answer.status();
+
+        if status == StatusCode::NOT_FOUND {
+            return Err(format!("The url: '{}' is not a valid endpoint", url));
+        }
+
+        let header_value = get_header(&answer)?;
+        body = get_body(answer).await?;
+
+        server_tok = prepare_server_token_from_header(header_value);
+    }
+
+    if counter >= retry {
+        return Err(String::from("Retry limit reached, aborting..."));
+    }
+
+    let map: HashMap<String, String> = serde_json::from_str::<HashMap<String, String>>(&body)
+        .map_err(|e| format!("Parsing error: {}", e))?;
+
+    Ok(map.into_iter().map(|i| Dns::new(i.0, i.1)).collect())
+}
+
+fn get_header(answer: &Response) -> Result<String, String> {
+    let headers = {
+        let h = answer.headers();
+        h.clone()
+    };
+
+    let header = headers
+        .get("WWW-Authenticate")
+        .ok_or("Fetching header error: Could not fetch WWW-Authenticate")?;
+
+    let header_value = header
+        .to_str()
+        .map_err(|e| format!("Parsing header error: {}", e))?
+        .to_string();
+
+    Ok(header_value)
+}
+
+async fn get_body(answer: Response) -> Result<String, String> {
+    answer
+        .text()
+        .await
+        .map_err(|e| format!("Error fetching body: {}", e))
+}
+
+async fn send_get(client: &Client, url: String, token: String) -> Result<Response, String> {
+    client
+        .get(url.clone())
+        .header("Authorization", "Negotiate ".to_string() + &token)
+        .send()
+        .await
+        .map_err(|e| format!("Send error: {}", e))
 }
