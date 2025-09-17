@@ -953,7 +953,9 @@ dependencies = [
 name = "librping"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "hostname",
+ "libgssapi",
  "reqwest",
  "serde_json",
  "tabled",

@@ -12,6 +12,9 @@ struct Config {
     // serve action params
     port: u16,
     principal: String,
+
+    // list send action params
+    realm: String,
 }
 
 pub async fn launch_based_on_params(params: Vec<String>) -> Result<(), &'static str> {
@@ -36,11 +39,11 @@ pub async fn launch_based_on_params(params: Vec<String>) -> Result<(), &'static 
             Ok(())
         }
         "list" => {
-            librping::list(config.url).await;
+            librping::list(config.url, config.realm).await;
             Ok(())
         }
         "send" => {
-            librping::send(config.url).await;
+            librping::send(config.url, config.realm).await;
             Ok(())
         }
         _ => Err("Unknown command"),
@@ -53,6 +56,7 @@ fn parse_params(params: Vec<String>) -> Result<Config, &'static str> {
         url: String::new(),
         port: 8000,
         principal: String::new(),
+        realm: String::new(),
     };
 
     let mut i = 0;
@@ -90,6 +94,10 @@ fn add_param(mut config: Config, param: String, next_param: &str) -> Result<Conf
             config.principal = next_param.to_string();
             Ok(config)
         }
+        "realm" => {
+            config.realm = next_param.to_string().to_uppercase();
+            Ok(config)
+        }
         _ => Err("Unknown option"),
     }
 }
@@ -110,6 +118,10 @@ fn config_valid(config: Config) -> Result<Config, &'static str> {
 
     if !config.action.contains("serve") && config.url.is_empty() {
         return Err("No url specified");
+    }
+
+    if !config.action.contains("serve") && config.realm.is_empty() {
+        return Err("No realm specified");
     }
 
     if config.action.contains("serve") && config.principal.is_empty() {
