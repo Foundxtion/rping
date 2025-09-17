@@ -10,21 +10,37 @@ use rocket::request::{FromRequest, Outcome};
 
 use crate::KrbServerCreds;
 
+/// Kerberos token struct, used for authentication in Rocket requests.
 pub struct KrbToken {
     pub principal: String,
 }
 
+/// Incomplete SPNEGO token struct, used for partial authentication state.
 #[derive(Debug)]
 pub struct IncompleteSpnego {
     pub token: String,
 }
 
+/// Internal struct representing authentication status.
 struct AuthStatus {
     krb: Option<KrbToken>,
     spnego: Option<IncompleteSpnego>,
 }
 
 impl KrbToken {
+    /// Creates a new Kerberos token from a principal string.
+    ///
+    /// ### Parameters
+    /// - `principal`: The Kerberos principal as a string.
+    ///
+    /// ### Returns
+    /// - `KrbToken`: New Kerberos token struct.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let token = KrbToken::new("user@EXAMPLE.COM".to_string());
+    /// assert_eq!(token.principal, "user@EXAMPLE.COM");
+    /// ```
     pub fn new(principal: String) -> KrbToken {
         KrbToken {
             principal: principal,
@@ -35,6 +51,13 @@ impl KrbToken {
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for KrbToken {
     type Error = String;
+    /// Extracts Kerberos token from request headers and validates it.
+    ///
+    /// ### Parameters
+    /// - `request`: Reference to the incoming request.
+    ///
+    /// ### Returns
+    /// - `Outcome<Self, Self::Error>`: Success with token or error outcome.
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         let header = request.headers().get_one("Authorization");
 

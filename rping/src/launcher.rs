@@ -4,6 +4,8 @@ use std::collections::HashMap;
 
 use crate::{routes, types::HostMap};
 
+/// Configuration struct for application launch parameters.
+/// Used to store options for serving, listing, or sending DNS records.
 struct Config {
     // common options [serve, list, send]
     action: String,
@@ -17,6 +19,19 @@ struct Config {
     realm: String,
 }
 
+/// Launches the application based on parsed command-line parameters.
+///
+/// ### Parameters
+/// - `params`: Vector of command-line arguments.
+///
+/// ### Returns
+/// - `Result<(), &'static str>`: Ok if launch is successful, Err otherwise.
+///
+/// ### Example
+/// ```rust
+/// let params = vec!["serve".to_string(), "--url".to_string(), "http://localhost:8000".to_string()];
+/// launch_based_on_params(params).await.unwrap();
+/// ```
 pub async fn launch_based_on_params(params: Vec<String>) -> Result<(), &'static str> {
     let config: Config = parse_params(params)?;
 
@@ -50,6 +65,13 @@ pub async fn launch_based_on_params(params: Vec<String>) -> Result<(), &'static 
     }
 }
 
+/// Parses command-line parameters into a Config struct.
+///
+/// ### Parameters
+/// - `params`: Vector of command-line arguments.
+///
+/// ### Returns
+/// - `Result<Config, &'static str>`: Ok with Config struct, Err otherwise.
 fn parse_params(params: Vec<String>) -> Result<Config, &'static str> {
     let mut config = Config {
         action: String::new(),
@@ -78,6 +100,15 @@ fn parse_params(params: Vec<String>) -> Result<Config, &'static str> {
     Ok(config)
 }
 
+/// Adds a parameter to the Config struct.
+///
+/// ### Parameters
+/// - `config`: The current Config struct.
+/// - `param`: The parameter name as a string.
+/// - `next_param`: The value for the parameter.
+///
+/// ### Returns
+/// - `Result<Config, &str>`: Ok with updated Config, Err otherwise.
 fn add_param(mut config: Config, param: String, next_param: &str) -> Result<Config, &str> {
     match param.as_str() {
         "url" => {
@@ -102,6 +133,14 @@ fn add_param(mut config: Config, param: String, next_param: &str) -> Result<Conf
     }
 }
 
+/// Sets the action field in the Config struct.
+///
+/// ### Parameters
+/// - `config`: The current Config struct.
+/// - `param`: The action name as a string.
+///
+/// ### Returns
+/// - `Result<Config, &'static str>`: Ok with updated Config, Err otherwise.
 fn set_action(mut config: Config, param: String) -> Result<Config, &'static str> {
     if !config.action.is_empty() {
         Err("Action set more than one time")
@@ -111,6 +150,13 @@ fn set_action(mut config: Config, param: String) -> Result<Config, &'static str>
     }
 }
 
+/// Validates the Config struct for required fields.
+///
+/// ### Parameters
+/// - `config`: The Config struct to validate.
+///
+/// ### Returns
+/// - `Result<Config, &'static str>`: Ok if valid, Err otherwise.
 fn config_valid(config: Config) -> Result<Config, &'static str> {
     if config.action.is_empty() {
         return Err("No action provided");

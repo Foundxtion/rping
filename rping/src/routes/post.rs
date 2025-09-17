@@ -10,16 +10,19 @@ use rocket_krb5::KrbToken;
 
 use crate::types::HostMap;
 
+#[doc = "Request struct for DNS info, used in POST requests to add DNS records."]
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct DnsInfoRequest {
     hostname: String,
 }
 
+/// Guard struct for extracting client IP from requests.
 pub struct ClientGuard {
     ip: String,
 }
 
+#[doc = "Response struct for DNS operations, used in POST responses."]
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct DnsResponse {
@@ -37,6 +40,25 @@ impl<'r> FromRequest<'r> for ClientGuard {
     }
 }
 
+/// Handles POST requests to add a DNS record.
+///
+/// ### Parameters
+/// - `info`: JSON body containing DNS info.
+/// - `client_info`: Guard for extracting client IP.
+/// - `map`: Shared state for DNS records.
+/// - `_token`: Kerberos token for authentication.
+///
+/// ### Returns
+/// - `Json<DnsResponse>`: Response with operation message.
+///
+/// ### Example
+/// ```rust
+/// // Usage in Rocket route
+/// #[post("/", format = "application/json", data = "<info>")]
+/// async fn post_address(info: Json<DnsInfoRequest>, client_info: ClientGuard, map: &State<HostMap>, _token: KrbToken) -> Json<DnsResponse> {
+///     // ...
+/// }
+/// ```
 #[post("/", format = "application/json", data = "<info>")]
 pub async fn post_address(
     info: Json<DnsInfoRequest>,

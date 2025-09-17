@@ -5,11 +5,11 @@ use crate::{
 
 /// Lists DNS records from the server and displays them.
 ///
-/// # Parameters
+/// ### Parameters
 /// - `url`: The service URL as a string.
 /// - `realm`: The Kerberos realm as a string.
 ///
-/// # Example
+/// ### Example
 /// ```rust
 /// list("https://example.com/api".to_string(), "EXAMPLE.COM".to_string()).await;
 /// ```
@@ -22,11 +22,11 @@ pub async fn list(url: String, realm: String) {
 
 /// Sends the current hostname as a DNS record to the server.
 ///
-/// # Parameters
+/// ### Parameters
 /// - `url`: The service URL as a string.
 /// - `realm`: The Kerberos realm as a string.
 ///
-/// # Example
+/// ### Example
 /// ```rust
 /// send("https://example.com/api".to_string(), "EXAMPLE.COM".to_string()).await;
 /// ```
